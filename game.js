@@ -3,22 +3,26 @@ const ctx = canvas.getContext("2d");
 const messageEl = document.getElementById("goalMessage");
 
 const gravity = 0.5;
-const controlKeys = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
+const controlKeys = new Set(["a", "d", "w"]);
 const keys = {};
 
+// ステージ全体の幅
+const STAGE_WIDTH = 3000;
+
+// 足場（横長の地面 + 数個のブロック）
 const platforms = [
-  { x: 0, y: 350, w: 800, h: 50 }, // ground
-  { x: 150, y: 300, w: 100, h: 20 },
-  { x: 300, y: 250, w: 100, h: 20 },
-  { x: 500, y: 280, w: 100, h: 20 }
+  { x: 0, y: 350, w: STAGE_WIDTH, h: 50 }, // ground
+  { x: 400, y: 300, w: 120, h: 20 },
+  { x: 800, y: 250, w: 100, h: 20 },
+  { x: 1200, y: 280, w: 100, h: 20 },
+  { x: 1600, y: 260, w: 100, h: 20 },
+  { x: 2000, y: 240, w: 120, h: 20 }
 ];
 
-const goal = { x: 730, y: 300, w: 30, h: 50 };
+// ゴール
+const goal = { x: 2800, y: 300, w: 40, h: 60 };
 
-const goalState = {
-  active: false,
-  triggeredAt: 0
-};
+const goalState = { active: false, triggeredAt: 0 };
 const GOAL_MESSAGE_DURATION = 2000;
 
 const player = {
@@ -39,53 +43,47 @@ const player = {
     ctx.restore();
   },
   update(platformList) {
-    const horizontalVelocity = this.dx;
-    const previousX = this.x;
-    this.x += horizontalVelocity;
+    const prevX = this.x;
+    this.x += this.dx;
 
-    platformList.forEach(platform => {
-      if (isIntersecting(this, platform)) {
-        if (horizontalVelocity > 0 && previousX + this.width <= platform.x) {
-          this.x = platform.x - this.width;
+    // 横方向の衝突
+    platformList.forEach(p => {
+      if (isIntersecting(this, p)) {
+        if (this.dx > 0 && prevX + this.width <= p.x) {
+          this.x = p.x - this.width;
           this.dx = 0;
-        } else if (horizontalVelocity < 0 && previousX >= platform.x + platform.w) {
-          this.x = platform.x + platform.w;
+        } else if (this.dx < 0 && prevX >= p.x + p.w) {
+          this.x = p.x + p.w;
           this.dx = 0;
         }
       }
     });
 
-    const previousY = this.y;
+    const prevY = this.y;
     this.dy += gravity;
-    const verticalVelocity = this.dy;
-    this.y += verticalVelocity;
+    this.y += this.dy;
 
     this.grounded = false;
-    platformList.forEach(platform => {
-      if (isIntersecting(this, platform)) {
-        if (verticalVelocity > 0 && previousY + this.height <= platform.y) {
-          this.y = platform.y - this.height;
+    platformList.forEach(p => {
+      if (isIntersecting(this, p)) {
+        if (this.dy > 0 && prevY + this.height <= p.y) {
+          this.y = p.y - this.height;
           this.dy = 0;
           this.grounded = true;
-        } else if (verticalVelocity < 0 && previousY >= platform.y + platform.h) {
-          this.y = platform.y + platform.h;
+        } else if (this.dy < 0 && prevY >= p.y + p.h) {
+          this.y = p.y + p.h;
           this.dy = 0;
         }
       }
     });
 
-    if (this.x < 0) this.x = 0;
-    if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
-    if (this.y < 0) {
-      this.y = 0;
-      this.dy = 0;
-    }
     if (this.y > canvas.height) {
       resetGame();
     }
   }
 };
 
+// 衝突判定
 function isIntersecting(a, b) {
   return (
     a.x < b.x + b.w &&
@@ -105,25 +103,21 @@ function handleInput() {
   }
 }
 
-function onKeyDown(event) {
-  if (controlKeys.has(event.key)) {
-    event.preventDefault();
-    keys[event.key] = true;
+document.addEventListener("keydown", e => {
+  if (controlKeys.has(e.key)) {
+    e.preventDefault();
+    keys[e.key] = true;
   }
-}
-
-function onKeyUp(event) {
-  if (controlKeys.has(event.key)) {
-    event.preventDefault();
-    keys[event.key] = false;
+});
+document.addEventListener("keyup", e => {
+  if (controlKeys.has(e.key)) {
+    e.preventDefault();
+    keys[e.key] = false;
   }
-}
-
-document.addEventListener("keydown", onKeyDown, { passive: false });
-document.addEventListener("keyup", onKeyUp, { passive: false });
+});
 
 function showGoalMessage() {
-  messageEl.textContent = "ゴール！ クリックするとすぐに再スタートします。";
+  messageEl.textContent = "ゴール！クリックで再スタート";
   messageEl.classList.remove("hidden");
 }
 
@@ -139,9 +133,7 @@ function triggerGoal(timestamp) {
 }
 
 messageEl.addEventListener("click", () => {
-  if (goalState.active) {
-    resetGame();
-  }
+  if (goalState.active) resetGame();
 });
 
 function resetGame() {
@@ -153,16 +145,15 @@ function resetGame() {
   player.dx = 0;
   player.dy = 0;
   player.grounded = false;
-  Object.keys(keys).forEach(key => {
-    keys[key] = false;
-  });
+  Object.keys(keys).forEach(k => (keys[k] = false));
 }
+
+// カメラ
+let cameraX = 0;
 
 function drawPlatforms() {
   ctx.fillStyle = "#654321";
-  platforms.forEach(platform => {
-    ctx.fillRect(platform.x, platform.y, platform.w, platform.h);
-  });
+  platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
 }
 
 function drawGoal() {
@@ -173,13 +164,20 @@ function drawGoal() {
 function update(timestamp = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!goalState.active) {
-    handleInput();
-  } else {
-    player.dx = 0;
-  }
+  if (!goalState.active) handleInput();
+  else player.dx = 0;
 
   player.update(platforms);
+
+  // カメラ追従：プレイヤー中心にスクロール
+  cameraX = Math.min(
+    Math.max(0, player.x - canvas.width / 2),
+    STAGE_WIDTH - canvas.width
+  );
+
+  ctx.save();
+  ctx.translate(-cameraX, 0);
+
   drawPlatforms();
   drawGoal();
   player.draw();
@@ -187,6 +185,8 @@ function update(timestamp = 0) {
   if (!goalState.active && isIntersecting(player, goal)) {
     triggerGoal(timestamp);
   }
+
+  ctx.restore();
 
   if (goalState.active && timestamp - goalState.triggeredAt >= GOAL_MESSAGE_DURATION) {
     resetGame();
