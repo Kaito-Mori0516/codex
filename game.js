@@ -69,8 +69,14 @@ index 0000000000000000000000000000000000000000..d7c2e3e43b244bbee145a9f8e7d23ffa
 +
 +// --- input handling ---
 +const keys = {};
-+document.addEventListener("keydown", e => (keys[e.key] = true));
-+document.addEventListener("keyup", e => (keys[e.key] = false));
++document.addEventListener("keydown", e => {
++  e.preventDefault();
++  keys[e.key] = true;
++});
++document.addEventListener("keyup", e => {
++  e.preventDefault();
++  keys[e.key] = false;
++});
 +
 +function handleInput() {
 +  player.dx = 0;
