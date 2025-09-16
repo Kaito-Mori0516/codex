@@ -3,7 +3,7 @@ const ctx = canvas.getContext("2d");
 const messageEl = document.getElementById("goalMessage");
 
 const gravity = 0.5;
-const controlKeys = new Set(["a", "d", "w"]);
+const controlKeys = new Set(["a", "d", " "]);
 const keys = {};
 
 // ステージ全体の幅
@@ -95,13 +95,14 @@ function isIntersecting(a, b) {
 
 function handleInput() {
   player.dx = 0;
-  if (keys.ArrowLeft) player.dx = -player.speed;
-  if (keys.ArrowRight) player.dx = player.speed;
-  if (keys.ArrowUp && player.grounded) {
+  if (keys.a) player.dx = -player.speed;   // Aで左移動
+  if (keys.d) player.dx = player.speed;    // Dで右移動
+  if (keys[" "] && player.grounded) {      // スペースキーでジャンプ
     player.dy = -player.jumpForce;
     player.grounded = false;
   }
 }
+
 
 document.addEventListener("keydown", e => {
   if (controlKeys.has(e.key)) {
