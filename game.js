@@ -3,11 +3,19 @@ const ctx = canvas.getContext("2d");
 const messageEl = document.getElementById("goalMessage");
 
 const gravity = 0.5;
-const controlKeys = new Set(["a", "d", " "]);
-const keys = {};
+const KEY_LEFT = "a";
+const KEY_RIGHT = "d";
+const KEY_JUMP = " ";
+const controlKeys = new Set([KEY_LEFT, KEY_RIGHT, KEY_JUMP]);
+const keys = {
+  [KEY_LEFT]: false,
+  [KEY_RIGHT]: false,
+  [KEY_JUMP]: false
+};
 
 // ステージ全体の幅
 const STAGE_WIDTH = 3000;
+const START_POSITION = Object.freeze({ x: 50, y: 300 });
 
 // 足場（横長の地面 + 数個のブロック）
 const platforms = [
@@ -26,8 +34,8 @@ const goalState = { active: false, triggeredAt: 0 };
 const GOAL_MESSAGE_DURATION = 2000;
 
 const player = {
-  x: 50,
-  y: 300,
+  x: START_POSITION.x,
+  y: START_POSITION.y,
   width: 30,
   height: 30,
   dx: 0,
@@ -45,6 +53,7 @@ const player = {
   update(platformList) {
     const prevX = this.x;
     this.x += this.dx;
+    this.x = clamp(this.x, 0, STAGE_WIDTH - this.width);
 
     // 横方向の衝突
     platformList.forEach(p => {
@@ -58,6 +67,7 @@ const player = {
         }
       }
     });
+    this.x = clamp(this.x, 0, STAGE_WIDTH - this.width);
 
     const prevY = this.y;
     this.dy += gravity;
@@ -83,6 +93,10 @@ const player = {
   }
 };
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
 // 衝突判定
 function isIntersecting(a, b) {
   return (
@@ -94,31 +108,34 @@ function isIntersecting(a, b) {
 }
 
 function handleInput() {
-  player.dx = 0;
-  if (keys.a) player.dx = -player.speed;   // Aで左移動
-  if (keys.d) player.dx = player.speed;    // Dで右移動
-  if (keys[" "] && player.grounded) {      // スペースキーでジャンプ
+  let move = 0;
+  if (keys[KEY_LEFT]) move -= 1;
+  if (keys[KEY_RIGHT]) move += 1;
+  player.dx = move * player.speed;
+
+  if (keys[KEY_JUMP] && player.grounded) {
     player.dy = -player.jumpForce;
     player.grounded = false;
   }
 }
 
-
 document.addEventListener("keydown", e => {
-  if (controlKeys.has(e.key)) {
+  const key = e.key.toLowerCase();
+  if (controlKeys.has(key)) {
     e.preventDefault();
-    keys[e.key] = true;
+    keys[key] = true;
   }
 });
 document.addEventListener("keyup", e => {
-  if (controlKeys.has(e.key)) {
+  const key = e.key.toLowerCase();
+  if (controlKeys.has(key)) {
     e.preventDefault();
-    keys[e.key] = false;
+    keys[key] = false;
   }
 });
 
 function showGoalMessage() {
-  messageEl.textContent = "ゴール！クリックで再スタート";
+  messageEl.textContent = "ゴール！2秒後に再スタート（クリックでもOK）";
   messageEl.classList.remove("hidden");
 }
 
@@ -141,8 +158,8 @@ function resetGame() {
   hideGoalMessage();
   goalState.active = false;
   goalState.triggeredAt = 0;
-  player.x = 50;
-  player.y = 300;
+  player.x = START_POSITION.x;
+  player.y = START_POSITION.y;
   player.dx = 0;
   player.dy = 0;
   player.grounded = false;
@@ -165,16 +182,21 @@ function drawGoal() {
 function update(timestamp = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (!goalState.active) handleInput();
-  else player.dx = 0;
+  if (!goalState.active) {
+    handleInput();
+    player.update(platforms);
 
-  player.update(platforms);
+    if (isIntersecting(player, goal)) {
+      triggerGoal(timestamp);
+    }
+  } else {
+    player.dx = 0;
+    player.dy = 0;
+  }
 
-  // カメラ追従：プレイヤー中心にスクロール
-  cameraX = Math.min(
-    Math.max(0, player.x - canvas.width / 2),
-    STAGE_WIDTH - canvas.width
-  );
+  const targetCameraX = player.x - canvas.width / 2;
+  const maxCameraX = Math.max(0, STAGE_WIDTH - canvas.width);
+  cameraX = clamp(targetCameraX, 0, maxCameraX);
 
   ctx.save();
   ctx.translate(-cameraX, 0);
@@ -182,10 +204,6 @@ function update(timestamp = 0) {
   drawPlatforms();
   drawGoal();
   player.draw();
-
-  if (!goalState.active && isIntersecting(player, goal)) {
-    triggerGoal(timestamp);
-  }
 
   ctx.restore();
 
