@@ -37,7 +37,6 @@ canvas {
   background: rgba(0, 0, 0, 0.75);
   border-radius: 9999px;
   font-size: 1rem;
-  letter-spacing: 0.02em;
   text-align: center;
   pointer-events: auto;
   transition: opacity 0.2s ease;
