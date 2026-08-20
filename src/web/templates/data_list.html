@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <span class="eyebrow">DATA EXPLORER</span>
+      <h1>データ一覧</h1>
+      <p>条件を選ぶだけで、表と推移グラフの両方を絞り込めます。</p>
+    </div>
+    <a class="button button-secondary" href="{{ csv_url }}">CSVダウンロード</a>
+  </section>
+
+  {% with action=url_for('web.data_list'), show_search=true %}
+    {% include "_filters.html" %}
+  {% endwith %}
+
+  <section class="panel compact-chart-panel">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">FILTERED TREND</span>
+        <h2>{{ chart.indicator or '該当データなし' }}</h2>
+      </div>
+      {% if chart.latest_year %}<span class="panel-meta">最新 {{ chart.latest_year }}年 / {{ chart.unit }}</span>{% endif %}
+    </div>
+    <div class="chart-wrap chart-compact"><canvas id="filteredTrend" aria-label="絞り込み後の推移グラフ"></canvas></div>
+  </section>
+
+  <section class="panel data-panel">
+    <div class="panel-heading data-heading">
+      <div>
+        <span class="eyebrow">RESULTS</span>
+        <h2>{{ "{:,}".format(result.total) }}件</h2>
+      </div>
+      <form class="page-size" method="get">
+        {% for key, value in request.args.items() if key not in ['page_size', 'page'] %}
+          <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+        <label>表示件数
+          <select name="page_size" onchange="this.form.submit()">
+            {% for size in [25, 50, 100] %}
+              <option value="{{ size }}" {{ 'selected' if result.page_size == size else '' }}>{{ size }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th><a href="{{ sort_urls.country }}">国 {{ '↑' if sort == 'country' and order == 'asc' else '↓' if sort == 'country' else '' }}</a></th>
+            <th><a href="{{ sort_urls.region }}">地域 {{ '↑' if sort == 'region' and order == 'asc' else '↓' if sort == 'region' else '' }}</a></th>
+            <th>所得区分</th>
+            <th><a href="{{ sort_urls.indicator }}">指標 {{ '↑' if sort == 'indicator' and order == 'asc' else '↓' if sort == 'indicator' else '' }}</a></th>
+            <th><a href="{{ sort_urls.year }}">年 {{ '↑' if sort == 'year' and order == 'asc' else '↓' if sort == 'year' else '' }}</a></th>
+            <th class="numeric"><a href="{{ sort_urls.value }}">値 {{ '↑' if sort == 'value' and order == 'asc' else '↓' if sort == 'value' else '' }}</a></th>
+            <th><a href="{{ sort_urls.retrieved }}">取得日時 {{ '↑' if sort == 'retrieved' and order == 'asc' else '↓' if sort == 'retrieved' else '' }}</a></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.records %}
+            <tr>
+              <td><span class="country-code">{{ row.country_code }}</span><strong>{{ row.country_name }}</strong></td>
+              <td>{{ row.region }}</td>
+              <td><span class="tag">{{ row.income_level }}</span></td>
+              <td><strong>{{ row.indicator_name }}</strong><small class="subline">{{ row.indicator_code }}</small></td>
+              <td>{{ row.year }}</td>
+              <td class="numeric"><strong>{{ row.value|number }}</strong> <small>{{ row.unit }}</small></td>
+              <td><small>{{ row.retrieved_at|datetime }}</small></td>
+            </tr>
+          {% else %}
+            <tr><td class="table-empty" colspan="7">条件に一致するデータがありません。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if result.total %}
+      <nav class="pagination" aria-label="ページネーション">
+        {% if previous_url %}<a href="{{ previous_url }}">← 前へ</a>{% else %}<span>← 前へ</span>{% endif %}
+        <div>
+          {% for page_number, page_url in page_urls.items() %}
+            <a class="{{ 'current' if page_number == result.page else '' }}" href="{{ page_url }}">{{ page_number }}</a>
+          {% endfor %}
+        </div>
+        {% if next_url %}<a href="{{ next_url }}">次へ →</a>{% else %}<span>次へ →</span>{% endif %}
+      </nav>
+    {% endif %}
+  </section>
+
+  <script id="filtered-chart-data" type="application/json">{{ chart|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+{% endblock %}

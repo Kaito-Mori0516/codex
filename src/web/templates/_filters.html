@@ -1,0 +1,75 @@
+<form class="filter-panel" method="get" action="{{ action }}">
+  <div class="filter-heading">
+    <div>
+      <span class="eyebrow">FILTERS</span>
+      <h2>表示条件</h2>
+    </div>
+    <a class="text-link" href="{{ action }}">条件をリセット</a>
+  </div>
+  <div class="filter-grid">
+    {% if show_search %}
+      <label class="field field-wide">
+        <span>キーワード検索</span>
+        <input type="search" name="search" value="{{ filters.search }}" placeholder="国名・地域・指標名">
+      </label>
+    {% endif %}
+    <label class="field">
+      <span>指標</span>
+      <select name="indicator">
+        {% for indicator in options.indicators %}
+          <option value="{{ indicator.indicator_code }}" {{ 'selected' if filters.indicator == indicator.indicator_code else '' }}>
+            {{ indicator.indicator_name }}（{{ indicator.unit }}）
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>国</span>
+      <select name="country">
+        <option value="">すべての国</option>
+        {% for country in options.countries %}
+          <option value="{{ country.country_code }}" {{ 'selected' if filters.country == country.country_code else '' }}>
+            {{ country.country_name }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>地域</span>
+      <select name="region">
+        <option value="">すべての地域</option>
+        {% for region in options.regions %}
+          <option value="{{ region }}" {{ 'selected' if filters.region == region else '' }}>{{ region }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>所得区分</span>
+      <select name="income_level">
+        <option value="">すべての区分</option>
+        {% for income in options.income_levels %}
+          <option value="{{ income }}" {{ 'selected' if filters.income_level == income else '' }}>{{ income }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>開始年</span>
+      <input type="number" name="year_from" min="1900" max="2200" value="{{ filters.year_from or '' }}" placeholder="2000">
+    </label>
+    <label class="field">
+      <span>終了年</span>
+      <input type="number" name="year_to" min="1900" max="2200" value="{{ filters.year_to or '' }}" placeholder="2025">
+    </label>
+    <label class="field">
+      <span>値の下限</span>
+      <input type="number" name="value_min" step="any" value="{{ filters.value_min if filters.value_min is not none else '' }}" placeholder="0">
+    </label>
+    <label class="field">
+      <span>値の上限</span>
+      <input type="number" name="value_max" step="any" value="{{ filters.value_max if filters.value_max is not none else '' }}" placeholder="上限なし">
+    </label>
+  </div>
+  <div class="filter-actions">
+    <button class="button button-primary" type="submit">この条件で表示</button>
+  </div>
+</form>

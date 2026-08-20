@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">WORLD BANK OPEN DATA</span>
+      <h1>世界の変化を、<br><span>数字から読み解く。</span></h1>
+      <p>公式APIから取得した人口・都市化・平均寿命の公開データを、検索・比較・可視化できるローカルダッシュボードです。</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="{{ url_for('web.data_list') }}">データを見る</a>
+        <a class="button button-secondary" href="{{ url_for('web.charts') }}">グラフで比較</a>
+      </div>
+    </div>
+    <div class="hero-status">
+      <span class="status-dot {{ 'status-ok' if summary.data_count else 'status-empty' }}"></span>
+      <div>
+        <small>DATA STATUS</small>
+        <strong>{{ 'READY' if summary.data_count else 'EMPTY' }}</strong>
+      </div>
+      <p>最終取得<br>{{ summary.last_retrieved_at|datetime }}</p>
+    </div>
+  </section>
+
+  <section class="metrics-grid" aria-label="データ概要">
+    <article class="metric-card metric-primary">
+      <span>保存データ</span>
+      <strong>{{ "{:,}".format(summary.data_count) }}</strong>
+      <small>RECORDS</small>
+    </article>
+    <article class="metric-card">
+      <span>対象国</span>
+      <strong>{{ summary.country_count }}</strong>
+      <small>COUNTRIES</small>
+    </article>
+    <article class="metric-card">
+      <span>地域</span>
+      <strong>{{ summary.region_count }}</strong>
+      <small>REGIONS</small>
+    </article>
+    <article class="metric-card">
+      <span>指標</span>
+      <strong>{{ summary.indicator_count }}</strong>
+      <small>INDICATORS</small>
+    </article>
+  </section>
+
+  {% if not summary.data_count %}
+    <section class="empty-state">
+      <span class="empty-icon" aria-hidden="true">↻</span>
+      <div>
+        <h2>最初のデータを取得してください</h2>
+        <p>ターミナルで <code>python manage.py update</code> を実行すると、公式APIからデータを取得してSQLiteへ保存します。</p>
+      </div>
+    </section>
+  {% else %}
+    <section class="dashboard-grid">
+      <article class="panel chart-panel panel-large">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">TREND</span>
+            <h2>人口推移</h2>
+          </div>
+          <span class="panel-meta">{{ chart.indicator }} / 平均</span>
+        </div>
+        <div class="chart-wrap chart-large"><canvas id="dashboardTrend" aria-label="人口推移グラフ"></canvas></div>
+      </article>
+
+      <article class="panel update-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">LATEST RUN</span>
+            <h2>更新結果</h2>
+          </div>
+        </div>
+        {% if summary.latest_run %}
+          <span class="run-status run-{{ summary.latest_run.status }}">{{ summary.latest_run.status|upper }}</span>
+          <dl class="run-stats">
+            <div><dt>取得成功</dt><dd>{{ summary.latest_run.fetched_count }}件</dd></div>
+            <div><dt>新規保存</dt><dd>{{ summary.latest_run.inserted_count }}件</dd></div>
+            <div><dt>更新</dt><dd>{{ summary.latest_run.updated_count }}件</dd></div>
+            <div><dt>失敗</dt><dd>{{ summary.latest_run.failure_count }}件</dd></div>
+          </dl>
+          <p class="muted">{{ summary.latest_run.completed_at|datetime }}</p>
+        {% else %}
+          <p class="muted">更新履歴はありません。</p>
+        {% endif %}
+        <div class="command-box">
+          <small>MANUAL UPDATE</small>
+          <code>python manage.py update</code>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel latest-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">LATEST DATA</span>
+          <h2>最新データ</h2>
+        </div>
+        <a class="text-link" href="{{ url_for('web.data_list') }}">すべて見る →</a>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>国</th><th>地域</th><th>指標</th><th>年</th><th class="numeric">値</th></tr></thead>
+          <tbody>
+            {% for row in latest %}
+              <tr>
+                <td><span class="country-code">{{ row.country_code }}</span>{{ row.country_name }}</td>
+                <td>{{ row.region }}</td>
+                <td>{{ row.indicator_name }}</td>
+                <td>{{ row.year }}</td>
+                <td class="numeric"><strong>{{ row.value|number }}</strong> <small>{{ row.unit }}</small></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  <script id="dashboard-chart-data" type="application/json">{{ chart|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+{% endblock %}

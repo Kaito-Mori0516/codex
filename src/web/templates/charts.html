@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+  <section class="page-heading">
+    <div>
+      <span class="eyebrow">VISUAL ANALYSIS</span>
+      <h1>グラフ分析</h1>
+      <p>時系列、地域比較、国別ランキングの3つの視点で確認できます。</p>
+    </div>
+  </section>
+
+  {% with action=url_for('web.charts'), show_search=false %}
+    {% include "_filters.html" %}
+  {% endwith %}
+
+  {% if chart.indicator %}
+    <section class="chart-summary">
+      <div><span>選択中の指標</span><strong>{{ chart.indicator }}</strong></div>
+      <div><span>単位</span><strong>{{ chart.unit }}</strong></div>
+      <div><span>比較対象年</span><strong>{{ chart.latest_year }}</strong></div>
+    </section>
+
+    <section class="chart-grid">
+      <article class="panel chart-panel panel-full">
+        <div class="panel-heading"><div><span class="eyebrow">TIME SERIES</span><h2>時系列推移</h2></div><span class="panel-meta">対象国の平均</span></div>
+        <div class="chart-wrap chart-large"><canvas id="timeSeriesChart" aria-label="時系列推移グラフ"></canvas></div>
+      </article>
+      <article class="panel chart-panel">
+        <div class="panel-heading"><div><span class="eyebrow">REGION</span><h2>地域別比較</h2></div><span class="panel-meta">{{ chart.latest_year }}年</span></div>
+        <div class="chart-wrap"><canvas id="regionChart" aria-label="地域別比較グラフ"></canvas></div>
+      </article>
+      <article class="panel chart-panel">
+        <div class="panel-heading"><div><span class="eyebrow">RANKING</span><h2>国別ランキング</h2></div><span class="panel-meta">TOP 10</span></div>
+        <div class="chart-wrap"><canvas id="rankingChart" aria-label="国別ランキンググラフ"></canvas></div>
+      </article>
+    </section>
+
+    <section class="panel ranking-table">
+      <div class="panel-heading"><div><span class="eyebrow">DETAIL</span><h2>ランキング詳細</h2></div></div>
+      <ol>
+        {% for row in chart.ranking %}
+          <li><span class="rank">{{ loop.index }}</span><span class="country-code">{{ row.country_code }}</span><strong>{{ row.country_name }}</strong><span>{{ row.value|number }} {{ chart.unit }}</span></li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% else %}
+    <section class="empty-state"><span class="empty-icon">∅</span><div><h2>該当データがありません</h2><p>条件を変更するか、データ更新を実行してください。</p></div></section>
+  {% endif %}
+
+  <script id="analysis-chart-data" type="application/json">{{ chart|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/charts.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="error-page">
+    <span class="eyebrow">APPLICATION NOTICE</span>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <a class="button button-primary" href="{{ url_for('web.dashboard') }}">トップへ戻る</a>
+  </section>
+{% endblock %}
