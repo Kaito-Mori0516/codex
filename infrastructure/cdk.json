@@ -1,0 +1,10 @@
+{
+  "app": "python app.py",
+  "context": {
+    "environment": "dev",
+    "schedule_expression": "rate(1 day)",
+    "log_retention_days": 14,
+    "monthly_budget_usd": 5,
+    "@aws-cdk/core:defaultCrossStackReferences": "strong"
+  }
+}

@@ -9,9 +9,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-
-class DataAcquisitionError(RuntimeError):
-    """Raised when a remote response cannot be safely consumed."""
+from src.acquisition.errors import DataAcquisitionError
 
 
 class WorldBankClient:

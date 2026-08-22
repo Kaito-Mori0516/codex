@@ -4,11 +4,34 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Protocol
 
-from src.acquisition.client import DataAcquisitionError, WorldBankClient
+from src.acquisition.errors import DataAcquisitionError
 from src.acquisition.parser import parse_country_metadata, parse_indicator_payload
-from src.config import Settings
-from src.database.repository import DataRepository
+
+if TYPE_CHECKING:
+    from src.acquisition.client import WorldBankClient
+    from src.config import Settings
+
+
+class UpdateRepository(Protocol):
+    def start_update_run(self, started_at: str) -> Any: ...
+
+    def finish_update_run(self, run_id: Any, completed_at: str, result: dict[str, Any]) -> None: ...
+
+    def save_records(self, records: list[dict[str, Any]]) -> Any: ...
+
+
+class UpdateClient(Protocol):
+    def fetch_country_metadata(self) -> list[Any]: ...
+
+    def fetch_indicator(
+        self,
+        country_codes: tuple[str, ...],
+        indicator_code: str,
+        start_year: int,
+        end_year: int,
+    ) -> tuple[list[Any], str]: ...
 
 
 def utc_now() -> str:
@@ -45,20 +68,24 @@ class UpdateResult:
 class DataUpdateService:
     def __init__(
         self,
-        settings: Settings,
-        repository: DataRepository,
-        client: WorldBankClient | None = None,
+        settings: "Settings",
+        repository: UpdateRepository,
+        client: UpdateClient | None = None,
     ) -> None:
         self.settings = settings
         self.repository = repository
-        self.client = client or WorldBankClient(
-            base_url=settings.api_base_url,
-            timeout=settings.request_timeout,
-            max_retries=settings.max_retries,
-            backoff_factor=settings.backoff_factor,
-            request_interval=settings.request_interval,
-            user_agent=settings.user_agent,
-        )
+        if client is None:
+            from src.acquisition.client import WorldBankClient
+
+            client = WorldBankClient(
+                base_url=settings.api_base_url,
+                timeout=settings.request_timeout,
+                max_retries=settings.max_retries,
+                backoff_factor=settings.backoff_factor,
+                request_interval=settings.request_interval,
+                user_agent=settings.user_agent,
+            )
+        self.client = client
 
     def update(self) -> UpdateResult:
         started_at = utc_now()

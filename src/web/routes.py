@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import csv
 from io import StringIO
 from typing import Any
 
-import pandas as pd
 from flask import Blueprint, Response, current_app, jsonify, render_template, request, url_for
 
 from src.config import INDICATORS
@@ -175,9 +175,10 @@ def download_csv():
         "source_name",
         "source_url",
     ]
-    frame = pd.DataFrame.from_records(records, columns=columns)
-    buffer = StringIO()
-    frame.to_csv(buffer, index=False)
+    buffer = StringIO(newline="")
+    writer = csv.DictWriter(buffer, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(records)
     payload = "\ufeff" + buffer.getvalue()
     return Response(
         payload,
