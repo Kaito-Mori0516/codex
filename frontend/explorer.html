@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="主要国のWorld Bank指標を検索・絞り込みし、CSV・Excelでダウンロード">
+  <title>データ検索 | World Data Lens</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/explorer.js"></script>
+</head>
+<body data-page="explorer">
+  <a class="skip-link" href="#main">本文へ移動</a>
+  <header class="site-header">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">W</span><span><strong>World Data Lens</strong><small>BUSINESS OPEN DATA</small></span></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">メニュー</button>
+    <nav id="site-nav" class="site-nav"><a href="/">ダッシュボード</a><a class="active" href="/explorer.html">データ検索</a><a href="/pricing.html">法人向け</a><a href="/about.html">データについて</a></nav>
+  </header>
+
+  <main id="main" class="app-shell explorer-shell">
+    <section class="page-intro"><p class="eyebrow">DATA EXPLORER</p><h1>必要な数字だけを、すぐに資料へ。</h1><p>国・指標・期間を選ぶと表とダウンロードファイルへ同じ条件が反映されます。</p></section>
+
+    <section class="panel filter-panel">
+      <form id="explorer-filters" class="filter-grid">
+        <label>カテゴリー<select id="filter-category"><option value="">すべて</option></select></label>
+        <label>指標<select id="filter-indicator" name="indicator" required></select></label>
+        <label>国<select id="filter-country" name="country"><option value="">すべての国</option></select></label>
+        <label>開始年<input id="filter-year-from" name="year_from" type="number" min="1960" max="2100" inputmode="numeric"></label>
+        <label>終了年<input id="filter-year-to" name="year_to" type="number" min="1960" max="2100" inputmode="numeric"></label>
+        <label>並び順<select id="filter-sort" name="sort"><option value="year">年</option><option value="country">国名</option><option value="value">値</option></select></label>
+        <label>昇順・降順<select id="filter-order" name="order"><option value="desc">降順</option><option value="asc">昇順</option></select></label>
+        <div class="filter-actions"><button class="button button-primary" type="submit">検索する</button><button id="reset-filters" class="button button-secondary" type="button">リセット</button></div>
+      </form>
+    </section>
+
+    <section class="results-heading">
+      <div><p class="eyebrow">RESULTS</p><h2><span id="result-total">—</span> 件</h2><p id="result-caption">条件を読み込んでいます。</p></div>
+      <div class="download-actions"><a id="xlsx-download" class="button button-primary" href="/api/export.xlsx">Excel</a><a id="csv-download" class="button button-secondary" href="/api/export.csv">CSV</a></div>
+    </section>
+
+    <div id="explorer-message" class="notice" role="status" hidden></div>
+    <section class="panel table-panel">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>国</th><th>カテゴリー</th><th>指標</th><th>年</th><th class="numeric">値</th><th>単位</th><th>出典</th></tr></thead>
+          <tbody id="data-body"><tr><td colspan="7"><div class="loading-state">データを読み込んでいます…</div></td></tr></tbody>
+        </table>
+      </div>
+      <nav class="pagination" aria-label="ページネーション"><button id="page-prev" type="button">前へ</button><span id="page-state">—</span><button id="page-next" type="button">次へ</button></nav>
+    </section>
+    <p class="source-note">出典: World Bank Indicators API。値の定義・更新時期・欠損は指標ごとに異なります。</p>
+    <aside class="sponsor-slot" data-sponsor hidden></aside>
+    <aside class="ad-slot" data-ad-slot hidden aria-label="広告"></aside>
+  </main>
+  <footer class="site-footer"><div><strong>World Data Lens</strong><p>World Bank Indicators APIを活用した非公式データサービスです。</p></div><nav><a href="/about.html#source">出典・ライセンス</a><a href="/about.html#privacy">プライバシー</a><a href="/pricing.html">法人向け</a></nav><small>© <span data-current-year></span> World Data Lens</small></footer>
+</body>
+</html>

@@ -22,4 +22,9 @@ def test_main_pages_csv_and_health(settings, sample_records):
     assert "text/csv" in csv_response.content_type
     assert "JPN" in csv_response.get_data(as_text=True)
 
+    xlsx_response = client.get("/data.xlsx?indicator=SP.POP.TOTL&country=JPN")
+    assert xlsx_response.status_code == 200
+    assert "spreadsheetml" in xlsx_response.content_type
+    assert xlsx_response.data.startswith(b"PK")
+
     assert client.get("/health").get_json() == {"status": "ok", "data_count": 4}

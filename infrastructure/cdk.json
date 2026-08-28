@@ -2,9 +2,19 @@
   "app": "python app.py",
   "context": {
     "environment": "dev",
-    "schedule_expression": "rate(1 day)",
+    "schedule_expression": "rate(7 days)",
+    "data_start_year": 2010,
     "log_retention_days": 14,
     "monthly_budget_usd": 5,
+    "operator_name": "",
+    "contact_email": "",
+    "business_price_label": "個別設定",
+    "business_checkout_url": "",
+    "enterprise_contact_url": "",
+    "sponsor_text": "",
+    "sponsor_url": "",
+    "adsense_client_id": "",
+    "adsense_slot_id": "",
     "@aws-cdk/core:defaultCrossStackReferences": "strong"
   }
 }

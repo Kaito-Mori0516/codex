@@ -74,7 +74,7 @@ class BackendStack(Stack):
             architecture=lambda_.Architecture.ARM_64,
             handler="src.aws_handlers.update_data_handler.handler",
             code=lambda_code,
-            timeout=Duration.minutes(5),
+            timeout=Duration.minutes(10),
             memory_size=512,
             reserved_concurrent_executions=1,
             log_group=acquisition_logs,
@@ -82,15 +82,13 @@ class BackendStack(Stack):
                 "DATA_TABLE_NAME": data_table.table_name,
                 "RAW_BUCKET_NAME": raw_bucket.bucket_name,
                 "WORLD_BANK_API_BASE_URL": "https://api.worldbank.org/v2",
-                "WORLD_BANK_COUNTRIES": (
-                    "JPN,KOR,CHN,IND,IDN,AUS,USA,CAN,MEX,BRA,GBR,FRA,DEU,ZAF,NGA"
-                ),
-                "DATA_START_YEAR": "2000",
+                "WORLD_BANK_COUNTRIES": config.world_bank_countries,
+                "DATA_START_YEAR": str(config.data_start_year),
                 "REQUEST_TIMEOUT_SECONDS": "20",
                 "REQUEST_MAX_RETRIES": "3",
                 "REQUEST_BACKOFF_FACTOR": "0.8",
                 "REQUEST_INTERVAL_SECONDS": "0.5",
-                "USER_AGENT": "WorldDataLens/1.0 (AWS learning project)",
+                "USER_AGENT": "WorldDataLens/2.0 (public open-data service)",
             },
             description="Fetch, archive and persist World Bank indicator data",
         )
@@ -118,8 +116,8 @@ class BackendStack(Stack):
         )
         self.schedule = scheduler.CfnSchedule(
             self,
-            "DailyAcquisitionSchedule",
-            name=f"world-data-lens-{config.environment_name}-daily",
+            "AcquisitionSchedule",
+            name=f"world-data-lens-{config.environment_name}-refresh",
             group_name=self.schedule_group.name,
             description="Configurable World Bank data refresh",
             schedule_expression=config.schedule_expression,
@@ -159,11 +157,12 @@ class BackendStack(Stack):
             handler="src.aws_handlers.api_handler.handler",
             code=lambda_code,
             timeout=Duration.seconds(15),
-            memory_size=256,
+            memory_size=512,
             log_group=api_lambda_logs,
             environment={
                 "DATA_TABLE_NAME": data_table.table_name,
-                "DEFAULT_INDICATOR": "SP.POP.TOTL",
+                "DEFAULT_INDICATOR": "NY.GDP.MKTP.CD",
+                "WORLD_BANK_COUNTRIES": config.world_bank_countries,
             },
             description="Read-only World Data Lens API",
         )
@@ -195,12 +194,17 @@ class BackendStack(Stack):
             timeout_in_millis=15000,
         )
         for route_id, path in (
-            ("HealthRoute", "/health"),
-            ("DataRoute", "/data"),
-            ("CountriesRoute", "/countries"),
-            ("IndicatorsRoute", "/indicators"),
-            ("TimeseriesRoute", "/charts/timeseries"),
-            ("RankingRoute", "/charts/ranking"),
+            ("HealthRoute", "/api/health"),
+            ("SummaryRoute", "/api/summary"),
+            ("CatalogRoute", "/api/catalog"),
+            ("DataRoute", "/api/data"),
+            ("CountriesRoute", "/api/countries"),
+            ("IndicatorsRoute", "/api/indicators"),
+            ("TimeseriesRoute", "/api/charts/timeseries"),
+            ("RankingRoute", "/api/charts/ranking"),
+            ("OverviewRoute", "/api/charts/overview"),
+            ("CsvExportRoute", "/api/export.csv"),
+            ("ExcelExportRoute", "/api/export.xlsx"),
         ):
             apigwv2.CfnRoute(
                 self,
@@ -221,8 +225,8 @@ class BackendStack(Stack):
                 format=json_access_log_format(),
             ),
             default_route_settings=apigwv2.CfnStage.RouteSettingsProperty(
-                throttling_burst_limit=100,
-                throttling_rate_limit=50,
+                throttling_burst_limit=20,
+                throttling_rate_limit=10,
             ),
         )
         logs.CfnResourcePolicy(
@@ -256,7 +260,15 @@ class BackendStack(Stack):
         self.api_url = (
             f"https://{self.http_api.ref}.execute-api.{self.region}.{self.url_suffix}"
         )
+        self.api_domain_name = (
+            f"{self.http_api.ref}.execute-api.{self.region}.{self.url_suffix}"
+        )
         CfnOutput(self, "HttpApiUrl", value=self.api_url)
+        CfnOutput(
+            self,
+            "AcquisitionFunctionName",
+            value=self.acquisition_function.function_name,
+        )
         CfnOutput(self, "ScheduleExpression", value=config.schedule_expression)
 
 

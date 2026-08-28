@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.data_catalog import DEFAULT_COUNTRIES, INDICATORS
+
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:  # AWS Lambda package intentionally uses only runtime libraries.
@@ -16,42 +18,6 @@ except ModuleNotFoundError:  # AWS Lambda package intentionally uses only runtim
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-INDICATORS: dict[str, dict[str, str]] = {
-    "SP.POP.TOTL": {
-        "name": "Population, total",
-        "display_name": "人口（総数）",
-        "unit": "人",
-    },
-    "SP.URB.TOTL.IN.ZS": {
-        "name": "Urban population (% of total population)",
-        "display_name": "都市人口比率",
-        "unit": "%",
-    },
-    "SP.DYN.LE00.IN": {
-        "name": "Life expectancy at birth, total (years)",
-        "display_name": "平均寿命",
-        "unit": "年",
-    },
-}
-
-DEFAULT_COUNTRIES = (
-    "JPN",
-    "KOR",
-    "CHN",
-    "IND",
-    "IDN",
-    "AUS",
-    "USA",
-    "CAN",
-    "MEX",
-    "BRA",
-    "GBR",
-    "FRA",
-    "DEU",
-    "ZAF",
-    "NGA",
-)
 
 
 def _as_bool(value: str | bool | None, default: bool = False) -> bool:
@@ -72,7 +38,7 @@ class Settings:
     database_path: Path
     api_base_url: str
     countries: tuple[str, ...]
-    indicators: dict[str, dict[str, str]]
+    indicators: dict[str, dict[str, Any]]
     start_year: int
     end_year: int
     request_timeout: float
@@ -108,7 +74,7 @@ class Settings:
             ).rstrip("/"),
             countries=countries,
             indicators=values.get("INDICATORS", INDICATORS),
-            start_year=int(values.get("DATA_START_YEAR", os.getenv("DATA_START_YEAR", "2000"))),
+            start_year=int(values.get("DATA_START_YEAR", os.getenv("DATA_START_YEAR", "2010"))),
             end_year=int(end_year_text) if str(end_year_text).strip() else current_year,
             request_timeout=float(
                 values.get("REQUEST_TIMEOUT_SECONDS", os.getenv("REQUEST_TIMEOUT_SECONDS", "20"))

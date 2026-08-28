@@ -1,4 +1,5 @@
 import json
+from base64 import b64decode
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -129,6 +130,27 @@ def test_api_adapter_exposes_required_routes():
     assert json.loads(
         handle_event(event("/charts/ranking"), repository)["body"]
     )["ranking"]
+    assert json.loads(handle_event(event("/api/catalog"), repository)["body"])[
+        "indicators"
+    ]
+    assert json.loads(handle_event(event("/api/summary"), repository)["body"])[
+        "indicator_count"
+    ]
+
+
+def test_api_adapter_generates_csv_and_excel_downloads():
+    repository = FakeRepository()
+    csv_response = handle_event(
+        event("/api/export.csv", {"indicator": "SP.POP.TOTL"}), repository
+    )
+    xlsx_response = handle_event(
+        event("/api/export.xlsx", {"indicator": "SP.POP.TOTL"}), repository
+    )
+
+    assert csv_response["isBase64Encoded"] is True
+    assert b64decode(csv_response["body"]).startswith(b"\xef\xbb\xbf")
+    assert xlsx_response["isBase64Encoded"] is True
+    assert b64decode(xlsx_response["body"]).startswith(b"PK")
 
 
 def test_lambda_world_bank_client_archives_raw_json():

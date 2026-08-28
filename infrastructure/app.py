@@ -45,6 +45,8 @@ frontend = FrontendStack(
     app,
     f"{prefix}-Frontend",
     config=config,
+    project_root=project_root,
+    api_domain_name=backend.api_domain_name,
     env=aws_environment,
     description="World Data Lens private static frontend and CDN",
 )
@@ -56,12 +58,15 @@ monitoring = MonitoringStack(
     api_function=backend.api_function,
     http_api=backend.http_api,
     schedule_group_name=backend.schedule_group.name,
+    distribution=frontend.distribution,
     env=aws_environment,
     description="World Data Lens alarms, dashboard and optional budget",
 )
 
 backend.add_stack_dependency(data)
+frontend.add_stack_dependency(backend)
 monitoring.add_stack_dependency(backend)
+monitoring.add_stack_dependency(frontend)
 
 for stack in (data, backend, frontend, monitoring):
     cdk.Tags.of(stack).add("Project", "WorldDataLens")

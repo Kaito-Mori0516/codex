@@ -43,7 +43,7 @@ def parse_indicator_payload(
     payload: list[Any],
     countries: dict[str, dict[str, str]],
     indicator_code: str,
-    indicator: dict[str, str],
+    indicator: dict[str, Any],
     retrieved_at: str,
     source_url: str,
 ) -> TransformResult:
@@ -82,6 +82,8 @@ def parse_indicator_payload(
                 "income_level": metadata["income_level"],
                 "indicator_code": indicator_code,
                 "indicator_name": indicator["display_name"],
+                "indicator_name_en": indicator.get("name", indicator["display_name"]),
+                "category": indicator.get("category", "その他"),
                 "unit": indicator["unit"],
                 "value": value,
                 "year": year,

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="世界の主要経済・社会指標を比較し、企業資料向けCSV・Excelとして取得できるデータダッシュボード">
+  <title>World Data Lens | 世界データを、意思決定の資料へ</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script type="module" src="/assets/js/dashboard.js"></script>
+</head>
+<body data-page="dashboard">
+  <a class="skip-link" href="#main">本文へ移動</a>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="World Data Lens トップ">
+      <span class="brand-mark" aria-hidden="true">W</span>
+      <span><strong>World Data Lens</strong><small>BUSINESS OPEN DATA</small></span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">メニュー</button>
+    <nav id="site-nav" class="site-nav" aria-label="メインナビゲーション">
+      <a class="active" href="/">ダッシュボード</a>
+      <a href="/explorer.html">データ検索</a>
+      <a href="/pricing.html">法人向け</a>
+      <a href="/about.html">データについて</a>
+    </nav>
+  </header>
+
+  <main id="main" class="app-shell">
+    <section class="dashboard-intro">
+      <div>
+        <p class="eyebrow">WORLD BANK OPEN DATA, READY FOR BUSINESS</p>
+        <h1>世界データを、<br><span>意思決定の資料へ。</span></h1>
+        <p>主要国の経済・人口・デジタル・環境指標を、比較・グラフ化・Excel出力まで一つの画面で。</p>
+      </div>
+      <div class="intro-actions">
+        <a class="button button-primary" href="/explorer.html">データを検索する</a>
+        <a class="button button-secondary" href="/pricing.html">法人向け活用を見る</a>
+      </div>
+    </section>
+
+    <section class="metric-grid" aria-label="データ概要">
+      <article class="metric-card"><span>収録データ</span><strong id="metric-records">—</strong><small>records</small></article>
+      <article class="metric-card"><span>対象国・地域</span><strong id="metric-countries">—</strong><small>economies</small></article>
+      <article class="metric-card"><span>主要指標</span><strong id="metric-indicators">—</strong><small>indicators</small></article>
+      <article class="metric-card metric-status"><span>最終更新</span><strong id="metric-updated">—</strong><small id="metric-status">loading</small></article>
+    </section>
+
+    <section class="control-panel" aria-labelledby="view-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">INTERACTIVE VIEW</p><h2 id="view-title">指標を比較</h2></div>
+        <p id="indicator-description" class="section-note">指標を選択すると、推移と最新ランキングが更新されます。</p>
+      </div>
+      <form id="dashboard-filters" class="filter-row">
+        <label>カテゴリー<select id="category-select" name="category"><option value="">すべて</option></select></label>
+        <label>指標<select id="indicator-select" name="indicator" required></select></label>
+        <label>国<select id="country-select" name="country"><option value="">全対象国の平均</option></select></label>
+        <label>開始年<select id="year-from" name="year_from"></select></label>
+        <button class="button button-primary" type="submit">グラフを更新</button>
+      </form>
+    </section>
+
+    <div id="dashboard-message" class="notice" role="status" hidden></div>
+
+    <section class="visual-grid">
+      <article class="panel chart-panel chart-panel-wide">
+        <div class="panel-heading"><div><p class="eyebrow">TREND</p><h2 id="trend-title">時系列推移</h2></div><span id="trend-unit" class="unit-chip">—</span></div>
+        <div class="chart-frame"><canvas id="trend-chart" aria-label="選択指標の時系列グラフ"></canvas></div>
+      </article>
+      <article class="panel ranking-panel">
+        <div class="panel-heading"><div><p class="eyebrow">LATEST RANKING</p><h2 id="ranking-title">国別ランキング</h2></div><span id="ranking-year" class="unit-chip">—</span></div>
+        <ol id="ranking-list" class="ranking-list"><li class="skeleton-line"></li><li class="skeleton-line"></li><li class="skeleton-line"></li></ol>
+      </article>
+    </section>
+
+    <section class="download-strip">
+      <div><p class="eyebrow">READY FOR EXCEL</p><h2>出典と条件を残したまま、資料作成へ。</h2><p>Excelは概要・データ・項目定義の3シート。CSVは日本語版Excelでも文字化けしにくいUTF-8 BOM形式です。</p></div>
+      <div class="download-actions"><a id="dashboard-xlsx" class="button button-light" href="/api/export.xlsx">Excelをダウンロード</a><a id="dashboard-csv" class="button button-ghost" href="/api/export.csv">CSV</a></div>
+    </section>
+
+    <aside class="sponsor-slot" data-sponsor hidden aria-label="スポンサー情報"></aside>
+    <aside class="ad-slot" data-ad-slot hidden aria-label="広告"></aside>
+  </main>
+
+  <footer class="site-footer">
+    <div><strong>World Data Lens</strong><p>World Bank Indicators APIを活用した非公式データサービスです。</p></div>
+    <nav aria-label="フッターナビ"><a href="/about.html#source">出典・ライセンス</a><a href="/about.html#privacy">プライバシー</a><a href="/pricing.html">法人向け</a></nav>
+    <small>© <span data-current-year></span> World Data Lens</small>
+  </footer>
+</body>
+</html>

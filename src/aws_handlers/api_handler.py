@@ -5,9 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+from base64 import b64encode
+from datetime import datetime, timezone
 from typing import Any
 
 from src.aws_database.dynamodb_repository import DynamoDataRepository
+from src.data_catalog import DEFAULT_COUNTRIES, public_catalog
+from src.exports import build_csv, build_xlsx
 from src.services.aggregation_service import AggregationService
 
 
@@ -55,12 +59,41 @@ def _filters(params: dict[str, str], default_indicator: str | None = None) -> di
     }
 
 
-def _response(status: int, payload: Any) -> dict[str, Any]:
+def _response(status: int, payload: Any, *, cache_control: str = "public, max-age=300") -> dict[str, Any]:
     return {
         "statusCode": status,
-        "headers": {"content-type": "application/json; charset=utf-8"},
+        "headers": {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": cache_control,
+            "x-content-type-options": "nosniff",
+        },
         "body": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
     }
+
+
+def _file_response(payload: bytes, content_type: str, filename: str) -> dict[str, Any]:
+    return {
+        "statusCode": 200,
+        "isBase64Encoded": True,
+        "headers": {
+            "content-type": content_type,
+            "content-disposition": f'attachment; filename="{filename}"',
+            "cache-control": "private, no-store",
+            "x-content-type-options": "nosniff",
+        },
+        "body": b64encode(payload).decode("ascii"),
+    }
+
+
+def _country_codes() -> tuple[str, ...]:
+    configured = tuple(
+        dict.fromkeys(
+            code.strip().upper()
+            for code in os.getenv("WORLD_BANK_COUNTRIES", "").split(",")
+            if code.strip()
+        )
+    )
+    return configured or DEFAULT_COUNTRIES
 
 
 def handle_event(
@@ -69,18 +102,46 @@ def handle_event(
     context = event.get("requestContext", {}).get("http", {})
     method = context.get("method", "GET")
     path = context.get("path") or event.get("rawPath", "/")
+    if path == "/api":
+        path = "/"
+    elif path.startswith("/api/"):
+        path = path[4:]
     params = event.get("queryStringParameters") or {}
     if method != "GET":
-        return _response(405, {"error": "Method not allowed"})
+        return _response(405, {"error": "Method not allowed"}, cache_control="no-store")
 
     if path == "/health":
-        return _response(200, {"status": "ok", **repository.summary()})
+        return _response(200, {"status": "ok", **repository.summary()}, cache_control="no-store")
+    if path == "/summary":
+        catalog = public_catalog(_country_codes())
+        return _response(
+            200,
+            {
+                **repository.summary(),
+                "country_count": len(catalog["countries"]),
+                "indicator_count": len(catalog["indicators"]),
+                "source_name": "World Bank Indicators API",
+            },
+        )
+    if path == "/catalog":
+        return _response(200, public_catalog(_country_codes()), cache_control="public, max-age=3600")
     if path == "/countries":
-        return _response(200, {"countries": repository.filter_options()["countries"]})
+        return _response(
+            200,
+            {"countries": public_catalog(_country_codes())["countries"]},
+            cache_control="public, max-age=3600",
+        )
     if path == "/indicators":
-        return _response(200, {"indicators": repository.filter_options()["indicators"]})
+        return _response(
+            200,
+            {"indicators": public_catalog(_country_codes())["indicators"]},
+            cache_control="public, max-age=3600",
+        )
+    default_indicator = os.getenv("DEFAULT_INDICATOR", "NY.GDP.MKTP.CD")
     if path == "/data":
-        records = repository.all_records(_filters(params), limit=5000)
+        records = repository.all_records(
+            _filters(params, default_indicator=default_indicator), limit=5000
+        )
         sort_name = params.get("sort", "year")
         sort_field = SORT_FIELDS.get(sort_name, "year")
         descending = params.get("order", "desc").lower() != "asc"
@@ -101,17 +162,42 @@ def handle_event(
             },
         )
 
-    default_indicator = os.getenv("DEFAULT_INDICATOR", "SP.POP.TOTL")
-    if path in {"/charts/timeseries", "/charts/ranking"}:
+    if path in {"/charts/timeseries", "/charts/ranking", "/charts/overview"}:
         chart = AggregationService(repository).chart_data(
             _filters(params, default_indicator=default_indicator)
         )
         if path == "/charts/timeseries":
             keys = ("indicator", "indicator_code", "unit", "latest_year", "time_series")
-        else:
+        elif path == "/charts/ranking":
             keys = ("indicator", "indicator_code", "unit", "latest_year", "ranking")
+        else:
+            keys = (
+                "indicator",
+                "indicator_code",
+                "unit",
+                "latest_year",
+                "time_series",
+                "region_comparison",
+                "ranking",
+            )
         return _response(200, {key: chart.get(key) for key in keys})
-    return _response(404, {"error": "Not found"})
+
+    if path in {"/export.csv", "/export.xlsx"}:
+        filters = _filters(params, default_indicator=default_indicator)
+        records = repository.all_records(filters, limit=20000)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+        if path.endswith(".csv"):
+            return _file_response(
+                build_csv(records),
+                "text/csv; charset=utf-8",
+                f"world-data-lens-{timestamp}.csv",
+            )
+        return _file_response(
+            build_xlsx(records, filters=filters),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            f"world-data-lens-{timestamp}.xlsx",
+        )
+    return _response(404, {"error": "Not found"}, cache_control="no-store")
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
@@ -119,4 +205,8 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         return handle_event(event, _get_repository())
     except Exception:
         LOGGER.exception("Read API request failed")
-        return _response(500, {"error": "The request could not be completed"})
+        return _response(
+            500,
+            {"error": "The request could not be completed"},
+            cache_control="no-store",
+        )

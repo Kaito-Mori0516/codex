@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS indicator_values (
     income_level TEXT NOT NULL,
     indicator_code TEXT NOT NULL,
     indicator_name TEXT NOT NULL,
+    indicator_name_en TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT 'その他',
     unit TEXT NOT NULL,
     value REAL NOT NULL,
     year INTEGER NOT NULL,

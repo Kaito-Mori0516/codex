@@ -3,3 +3,4 @@ cdk.out/
 __pycache__/
 .pytest_cache/
 *.py[cod]
+deploy.env

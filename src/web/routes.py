@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import csv
-from io import StringIO
 from typing import Any
 
 from flask import Blueprint, Response, current_app, jsonify, render_template, request, url_for
 
-from src.config import INDICATORS
+from src.exports import build_csv, build_xlsx
 from src.database.repository import DataRepository, SORT_COLUMNS
 from src.services.aggregation_service import AggregationService
 
@@ -129,6 +127,7 @@ def data_list():
         else None,
         chart=chart,
         csv_url=query_url("web.download_csv", page=None, sort=None, order=None),
+        xlsx_url=query_url("web.download_xlsx", page=None, sort=None, order=None),
     )
 
 
@@ -159,31 +158,24 @@ def download_csv():
     default_indicator = next(iter(current_app.extensions["settings"].indicators))
     filters = parse_filters(default_indicator=default_indicator)
     records = repository().all_records(filters)
-    columns = [
-        "id",
-        "country_code",
-        "country_name",
-        "region",
-        "income_level",
-        "indicator_code",
-        "indicator_name",
-        "value",
-        "unit",
-        "year",
-        "period",
-        "retrieved_at",
-        "source_name",
-        "source_url",
-    ]
-    buffer = StringIO(newline="")
-    writer = csv.DictWriter(buffer, fieldnames=columns, extrasaction="ignore")
-    writer.writeheader()
-    writer.writerows(records)
-    payload = "\ufeff" + buffer.getvalue()
+    payload = build_csv(records)
     return Response(
         payload,
         mimetype="text/csv; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename=world_bank_data.csv"},
+    )
+
+
+@web.get("/data.xlsx")
+def download_xlsx():
+    default_indicator = next(iter(current_app.extensions["settings"].indicators))
+    filters = parse_filters(default_indicator=default_indicator)
+    records = repository().all_records(filters)
+    payload = build_xlsx(records, filters=filters)
+    return Response(
+        payload,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=world_data_lens.xlsx"},
     )
 
 

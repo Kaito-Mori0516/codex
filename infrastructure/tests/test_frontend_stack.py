@@ -17,6 +17,7 @@ def test_frontend_bucket_is_private_and_cloudfront_uses_oac(synthesized):
         ),
     )
     template.resource_count_is("AWS::CloudFront::OriginAccessControl", 1)
+    template.resource_count_is("Custom::CDKBucketDeployment", 1)
     template.has_resource_properties(
         "AWS::CloudFront::Distribution",
         Match.object_like(
@@ -28,6 +29,22 @@ def test_frontend_bucket_is_private_and_cloudfront_uses_oac(synthesized):
                         "PriceClass": "PriceClass_100",
                         "DefaultCacheBehavior": Match.object_like(
                             {"ViewerProtocolPolicy": "redirect-to-https"}
+                        ),
+                        "CacheBehaviors": Match.array_with(
+                            [
+                                Match.object_like(
+                                    {
+                                        "PathPattern": "api/export*",
+                                        "ViewerProtocolPolicy": "redirect-to-https",
+                                    }
+                                ),
+                                Match.object_like(
+                                    {
+                                        "PathPattern": "api/*",
+                                        "ViewerProtocolPolicy": "redirect-to-https",
+                                    }
+                                ),
+                            ]
                         ),
                     }
                 )
@@ -61,6 +78,6 @@ def test_frontend_bucket_is_private_and_cloudfront_uses_oac(synthesized):
 
 def test_monitoring_covers_lambda_and_http_api(synthesized):
     template = synthesized["monitoring"]
-    template.resource_count_is("AWS::CloudWatch::Alarm", 5)
+    template.resource_count_is("AWS::CloudWatch::Alarm", 6)
     template.resource_count_is("AWS::CloudWatch::Dashboard", 1)
     template.resource_count_is("AWS::Budgets::Budget", 0)

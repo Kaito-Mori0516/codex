@@ -13,7 +13,7 @@ def test_two_python_312_lambdas_and_scheduler_exist(synthesized):
                 "Runtime": "python3.12",
                 "Handler": "src.aws_handlers.update_data_handler.handler",
                 "Architectures": ["arm64"],
-                "Timeout": 300,
+                "Timeout": 600,
             }
         ),
     )
@@ -32,24 +32,29 @@ def test_two_python_312_lambdas_and_scheduler_exist(synthesized):
         "AWS::Scheduler::Schedule",
         Match.object_like(
             {
-                "ScheduleExpression": "rate(1 day)",
+                    "ScheduleExpression": "rate(7 days)",
                 "FlexibleTimeWindow": {"Mode": "OFF"},
             }
         ),
     )
 
 
-def test_http_api_has_only_the_six_read_routes(synthesized):
+def test_http_api_has_public_read_and_export_routes(synthesized):
     template = synthesized["backend"]
     template.has_resource_properties("AWS::ApiGatewayV2::Api", {"ProtocolType": "HTTP"})
-    template.resource_count_is("AWS::ApiGatewayV2::Route", 6)
+    template.resource_count_is("AWS::ApiGatewayV2::Route", 11)
     for path in (
-        "/health",
-        "/data",
-        "/countries",
-        "/indicators",
-        "/charts/timeseries",
-        "/charts/ranking",
+        "/api/health",
+        "/api/summary",
+        "/api/catalog",
+        "/api/data",
+        "/api/countries",
+        "/api/indicators",
+        "/api/charts/timeseries",
+        "/api/charts/ranking",
+        "/api/charts/overview",
+        "/api/export.csv",
+        "/api/export.xlsx",
     ):
         template.has_resource_properties(
             "AWS::ApiGatewayV2::Route", {"RouteKey": f"GET {path}"}

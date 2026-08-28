@@ -58,6 +58,22 @@ class DataRepository:
             raise DatabaseError(f"Could not read database schema: {exc}") from exc
         with self.connection() as connection:
             connection.executescript(schema)
+            # Additive migration for databases created by World Data Lens v1.
+            # SQLite's CREATE TABLE IF NOT EXISTS does not add new columns.
+            columns = {
+                str(row[1])
+                for row in connection.execute("PRAGMA table_info(indicator_values)")
+            }
+            if "indicator_name_en" not in columns:
+                connection.execute(
+                    "ALTER TABLE indicator_values "
+                    "ADD COLUMN indicator_name_en TEXT NOT NULL DEFAULT ''"
+                )
+            if "category" not in columns:
+                connection.execute(
+                    "ALTER TABLE indicator_values "
+                    "ADD COLUMN category TEXT NOT NULL DEFAULT 'その他'"
+                )
 
     def start_update_run(self, started_at: str) -> int:
         with self.connection() as connection:
@@ -130,6 +146,8 @@ class DataRepository:
                 "income_level",
                 "indicator_code",
                 "indicator_name",
+                "indicator_name_en",
+                "category",
                 "unit",
                 "value",
                 "year",
@@ -148,6 +166,8 @@ class DataRepository:
                     region = excluded.region,
                     income_level = excluded.income_level,
                     indicator_name = excluded.indicator_name,
+                    indicator_name_en = excluded.indicator_name_en,
+                    category = excluded.category,
                     unit = excluded.unit,
                     value = excluded.value,
                     period = excluded.period,
@@ -155,7 +175,21 @@ class DataRepository:
                     source_name = excluded.source_name,
                     source_url = excluded.source_url
                 """,
-                [tuple(record[column] for column in columns) for record in records],
+                [
+                    tuple(
+                        (
+                            record.get("indicator_name_en")
+                            or record.get("indicator_name")
+                            or ""
+                        )
+                        if column == "indicator_name_en"
+                        else (record.get("category") or "その他")
+                        if column == "category"
+                        else record[column]
+                        for column in columns
+                    )
+                    for record in records
+                ],
             )
 
         return SaveResult(inserted, updated, unchanged)

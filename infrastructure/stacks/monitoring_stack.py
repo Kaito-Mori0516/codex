@@ -7,6 +7,7 @@ from aws_cdk import aws_apigatewayv2 as apigwv2
 from aws_cdk import aws_budgets as budgets
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
+from aws_cdk import aws_cloudfront as cloudfront
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sns_subscriptions as subscriptions
@@ -26,6 +27,7 @@ class MonitoringStack(Stack):
         api_function: lambda_.IFunction,
         http_api: apigwv2.CfnApi,
         schedule_group_name: str,
+        distribution: cloudfront.IDistribution,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -48,10 +50,10 @@ class MonitoringStack(Stack):
             metric=acquisition_function.metric_duration(
                 period=Duration.minutes(5), statistic="Maximum"
             ),
-            threshold=240_000,
+            threshold=480_000,
             evaluation_periods=1,
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
-            alarm_description="Acquisition Lambda is close to its five-minute timeout",
+            alarm_description="Acquisition Lambda is close to its ten-minute timeout",
         )
         api_errors = cloudwatch.Alarm(
             self,
@@ -87,6 +89,19 @@ class MonitoringStack(Stack):
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
             alarm_description="EventBridge Scheduler could not invoke its target",
         )
+        cloudfront_5xx = distribution.metric5xx_error_rate(
+            period=Duration.minutes(5), statistic="Average"
+        )
+        cloudfront_5xx_alarm = cloudwatch.Alarm(
+            self,
+            "CloudFront5xxAlarm",
+            metric=cloudfront_5xx,
+            threshold=5,
+            evaluation_periods=2,
+            datapoints_to_alarm=2,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+            alarm_description="CloudFront 5xx error rate stayed above 5%",
+        )
 
         if config.alarm_email:
             topic = sns.Topic(self, "AlarmTopic")
@@ -100,6 +115,7 @@ class MonitoringStack(Stack):
                 api_errors,
                 api_5xx_alarm,
                 scheduler_error_alarm,
+                cloudfront_5xx_alarm,
             ):
                 alarm.add_alarm_action(action)
 
@@ -130,6 +146,11 @@ class MonitoringStack(Stack):
             cloudwatch.GraphWidget(
                 title="Scheduler target failures",
                 left=[scheduler_errors],
+            ),
+            cloudwatch.GraphWidget(
+                title="CloudFront requests and 5xx rate",
+                left=[distribution.metric_requests()],
+                right=[cloudfront_5xx],
             ),
         )
 

@@ -11,7 +11,10 @@
       <h1>データ一覧</h1>
       <p>条件を選ぶだけで、表と推移グラフの両方を絞り込めます。</p>
     </div>
-    <a class="button button-secondary" href="{{ csv_url }}">CSVダウンロード</a>
+    <div class="page-actions">
+      <a class="button button-secondary" href="{{ csv_url }}">CSVダウンロード</a>
+      <a class="button button-primary" href="{{ xlsx_url }}">Excelダウンロード</a>
+    </div>
   </section>
 
   {% with action=url_for('web.data_list'), show_search=true %}

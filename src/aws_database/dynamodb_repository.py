@@ -82,6 +82,17 @@ class DynamoDataRepository:
                 ":message": result["message"],
             },
         )
+        if result.get("status") == "success":
+            self.table.put_item(
+                Item={
+                    "pk": "METADATA",
+                    "sk": "DATASET",
+                    "entity_type": "dataset_metadata",
+                    "data_count": int(result.get("fetched_count", 0)),
+                    "last_updated_at": completed_at,
+                    "last_update_status": result["status"],
+                }
+            )
 
     def save_records(self, records: list[dict[str, Any]]) -> SaveResult:
         if not records:
@@ -100,7 +111,10 @@ class DynamoDataRepository:
                     unchanged += 1
                 else:
                     updated += 1
-                batch.put_item(Item=self._item_from_record(record))
+                # Annual indicators rarely change. Skipping unchanged writes keeps
+                # the scheduled refresh inexpensive and reduces DynamoDB traffic.
+                if previous is None or previous.get("value") != new_value:
+                    batch.put_item(Item=self._item_from_record(record))
         return SaveResult(inserted, updated, unchanged)
 
     def _batch_get(self, keys: list[dict[str, str]]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -260,7 +274,22 @@ class DynamoDataRepository:
             ],
         }
 
-    def summary(self) -> dict[str, int]:
+    def summary(self) -> dict[str, Any]:
+        try:
+            metadata = self.table.get_item(
+                Key={"pk": "METADATA", "sk": "DATASET"},
+                ConsistentRead=False,
+            ).get("Item")
+        except (AttributeError, TypeError):
+            metadata = None
+        if metadata:
+            return {
+                "data_count": int(metadata.get("data_count", 0)),
+                "last_updated_at": metadata.get("last_updated_at"),
+                "last_update_status": metadata.get("last_update_status"),
+            }
+
+        # Backward-compatible fallback for tables created before dataset metadata.
         total = 0
         request: dict[str, Any] = {
             "Select": "COUNT",
@@ -273,4 +302,4 @@ class DynamoDataRepository:
             if not last_key:
                 break
             request["ExclusiveStartKey"] = last_key
-        return {"data_count": total}
+        return {"data_count": total, "last_updated_at": None, "last_update_status": None}

@@ -27,7 +27,13 @@ def synthesized():
         raw_bucket=data.raw_bucket,
         data_table=data.data_table,
     )
-    frontend = FrontendStack(app, "TestFrontend", config=config)
+    frontend = FrontendStack(
+        app,
+        "TestFrontend",
+        config=config,
+        project_root=project_root,
+        api_domain_name=backend.api_domain_name,
+    )
     monitoring = MonitoringStack(
         app,
         "TestMonitoring",
@@ -36,6 +42,7 @@ def synthesized():
         api_function=backend.api_function,
         http_api=backend.http_api,
         schedule_group_name=backend.schedule_group.name,
+        distribution=frontend.distribution,
     )
     return {
         "data": Template.from_stack(data),
